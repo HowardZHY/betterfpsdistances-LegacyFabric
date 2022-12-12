@@ -1,90 +1,118 @@
-plugins {
-
-	id 'fabric-loom' version "1.0-SNAPSHOT" // To use chocoloom, change the version to a commit hash
-	id 'maven-publish'
+buildscript {
+    repositories {
+        //new forge repository
+        maven { url "https://maven.minecraftforge.net" }
+        maven { url 'https://repo.spongepowered.org/maven'}
+    }
+    dependencies {
+        classpath "net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT"
+        classpath 'org.spongepowered:mixingradle:0.6-SNAPSHOT'
+    }
 }
 
-sourceCompatibility = JavaVersion.VERSION_1_8
-targetCompatibility = JavaVersion.VERSION_1_8
+plugins {
+    id "java"
+    id "com.github.johnrengelman.shadow" version "2.0.4"
+}
 
-archivesBaseName = project.archives_base_name
-version = project.mod_version
-group = project.maven_group
+apply plugin: "net.minecraftforge.gradle.forge"
+apply plugin: 'org.spongepowered.mixin'
+
+version = "1.8.9"
+group = "com128.kzf" //http://maven.apache.org/guides/mini/guide-naming-conventions.html
+archivesBaseName = "betterfpsdistance" //name of the output jar
+
+sourceCompatibility = targetCompatibility = 1.8 //using java 8
+compileJava.options.encoding = "UTF-8"
+
+minecraft {
+    version = "1.8.9-11.15.1.2318-1.8.9"
+    runDir = "run"
+    mappings = "stable_22" //mappings for 1.8.9
+    makeObfSourceJar = false //disable creation of sources jar
+}
+
+configurations {
+    shade
+    compile.extendsFrom(shade)
+}
 
 repositories {
-	maven {
-		name = "legacy-fabric"
-		url = "https://maven.legacyfabric.net"
-	}
+    //repos for libraries (not gradle plugins)
+    //example:
+    //maven { url "https://repo.dreamys.studio/" }
+    maven { url 'https://repo.spongepowered.org/maven/' }
 }
-
-loom {
-	setIntermediaryUrl('https://maven.legacyfabric.net/net/legacyfabric/intermediary/%1$s/intermediary-%1$s-v2.jar');
-	// accessWidenerPath = file("src/main/resources/customskinloader.accesswidener");
-	
-	// Only needed for versions not available from vanilla launcher by default.
-	// customMinecraftManifest.set("https://meta.legacyfabric.net/v2/manifest/${minecraft_version}")
-
-	// Required by 1.7.x
-	runs {
-	         client {
-			programArgs "--userProperties", "{}"}
-	}
-}
-
-def lwjgl2 = !project.minecraft_version.startsWith("1.13")
-def currentOs = System.getProperty("os.name").toLowerCase(Locale.ENGLISH)
 
 dependencies {
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings "net.legacyfabric:yarn:${project.yarn_mappings}:v2"
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    //shade will bundle your library to the output jar
+    //your libraries will be accessible outside of intellij
+    //example:
+    //shade "studio.dreamys:libSkyblock:1.1.1"
+    shade('org.spongepowered:mixin:0.7.11-SNAPSHOT') {
+        exclude module: 'launchwrapper'
+        exclude module: 'guava'
+        exclude module: 'gson'
+        exclude module: 'commons-io'
+        exclude module: 'log4j-core'
+    }
 
-	// Fabric API provides hooks for events, item registration, and more. As most mods will need this, it's included by default. 
-	// If you know for a fact you don't, it's not required and can be safely removed.
-	// modImplementation ("net.legacyfabric.legacy-fabric-api:legacy-fabric-api:${fabric_version}") {
- 	//	exclude module: "legacy-fabric-entity-events-v1"
- 	//}
-
+    //compile will make your library available only in this dev environment
+    //your libraries wont be accessible outside of intellij
+    //example:
+    //compile "studio.dreamys:libSkyblock:1.1.1"
 }
 
 processResources {
-	inputs.property "version", project.version
+    //this will ensure that this task is redone when the versions change.
+    inputs.property "version", project.version
+    inputs.property "mcversion", project.minecraft.version
 
-	filesMatching("fabric.mod.json") {
-		expand "version": project.version
-	}
+    //replace stuff in mcmod.info, nothing else
+    from(sourceSets.main.resources.srcDirs) {
+        include "mcmod.info"
+
+        //replace version and mcversion
+        expand "version":project.version, "mcversion":project.minecraft.version
+    }
+
+    //copy everything else, that"s not the mcmod.info
+    from(sourceSets.main.resources.srcDirs) {
+        exclude "mcmod.info"
+    }
+
+    rename '(.+_at.cfg)', 'META-INF/$1'
 }
 
-// ensure that the encoding is set to UTF-8, no matter what the system default is
-// this fixes some edge cases with special characters not displaying correctly
-// see http://yodaconditions.net/blog/fix-for-java-file-encoding-problems-with-gradle.html
-tasks.withType(JavaCompile).configureEach {
-	it.options.encoding = "UTF-8"
-	if (JavaVersion.current().isJava9Compatible()) it.options.release = 8
+shadowJar {
+    dependencies {
+        //we remove gson because it belongs to the public api and will break shading
+        //exclude(dependency("com.google.code.gson:gson:2.8.6"))
+    }
+    configurations = [project.configurations.shade]
+    duplicatesStrategy DuplicatesStrategy.EXCLUDE //prevent duplicates
+    classifier "" //prevent creation of unshadowed jar
 }
 
-java {
-	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-	// if it is present.
-	// If you remove this line, sources will not be generated.
-	withSourcesJar()
+reobf {
+    //reobfuscate the shadowed jar
+    shadowJar {}
 }
 
 jar {
+    manifest {
+        attributes "FMLCorePlugin": "com.betterfpsdist.BetterfpsdistMod",
+                "ForceLoadAsMod": true,
+                "TweakOrder": 0,
+                "ModSide": "CLIENT",
+                'FMLCorePluginContainsFMLMod': true,
+                'TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
+                'MixinConfigs': 'betterfpsdist.mixins.json'
+    }
 }
 
-// configure the maven publication
-publishing {
-	publications {
-		mavenJava(MavenPublication) {
-			from components.java
-		}
-	}
-
-	// select the repositories you want to publish to
-	repositories {
-		// uncomment to publish to the local maven
-		// mavenLocal()
-	}
+sourceSets {
+    main {
+        ext.refMap = "betterfpsdist-refmap.json"
+    }
 }

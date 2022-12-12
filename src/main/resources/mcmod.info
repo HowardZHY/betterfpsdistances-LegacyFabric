@@ -1,0 +1,16 @@
+[
+{
+  "modid": "betterfpsdist",
+  "name": "betterfpsdist",
+  "description": "Minecraft mod better fps distances improves render performance",
+  "version": "1.8.9",
+  "mcversion": "1.8.9",
+  "url": "https://github.com/someaddons/betterfpsdistances",
+  "updateUrl": "",
+  "authorList": ["someaddons,HowardZHY"],
+  "credits": "https://github.com/HowardZHY",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]

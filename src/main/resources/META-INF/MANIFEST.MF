@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+MixinConfigs: betterfpsdist.mixins.json
+TweakClass: org.spongepowered.asm.launch.MixinTweaker
+TweakOrder: -1023

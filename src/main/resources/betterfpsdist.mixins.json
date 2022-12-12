@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "package": "com.betterfpsdist.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "refmap": "betterfpsdist-refmap.json",
+  "plugin": "com.betterfpsdist.mixin.MixinConfig",
+  "mixins": [
+  ],
+  "client": [
+    "LevelRendererMixin",
+    "VideoOptionsScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "minVersion": "0.5"
+}
